@@ -2,12 +2,10 @@ import json
 from pathlib import Path
 from typing import List
 
-import boto3
 from fire import Fire
 from tqdm import tqdm
 
-from audio.amazon_trascription import transcribe
-
+from audio.amazon.transcriber import transcribe
 
 
 class Alternative:
@@ -135,13 +133,6 @@ def create_subtitle(response, speaker_name=None):
             items_dict[item.start_time].speaker_label = speaker_label.speaker_label
     grouped_items = group_items_by_speaker(items)
     return grouped_items
-
-
-def upload_file_to_s3(file_path: str, bucket_name: str, s3_key: str):
-    s3 = boto3.client('s3')
-    file_name = Path(file_path).name
-    s3.upload_file(file_path, bucket_name, s3_key)
-    return f's3://{bucket_name}/{s3_key}'
 
 
 def main(file_path: str):

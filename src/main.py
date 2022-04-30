@@ -5,8 +5,8 @@ from pathlib import Path
 from fire import Fire
 from joblib import Parallel, delayed
 
-from audio.amazon_trascription import transcribe
-from audio.subtitles import create_subtitle, create_subtitles_file
+from audio.amazon.transcriber import Transcriber
+from audio.amazon.subtitles import create_subtitle, create_subtitles_file
 from audio.utils import get_list_of_audio
 from text.main import prepare_tldr, generate_promts_from_transcription, merge_responses, beautify_lines
 from text.openai import request_open_ai_meeting_notes
@@ -47,10 +47,12 @@ def generate_transcription(transcription_path: Path = None):
     return grouped_items
 
 
+def transcribe_wrapper(audio_path: str):
+    return Transcriber(audio_path).transcribe()
 
 def create_trascription(audio_paths: list[str]):
     print('Processing audio files')
-    Parallel(n_jobs=2)(delayed(transcribe)(audio_path) for audio_path in audio_paths)
+    Parallel(n_jobs=2)(delayed(transcribe_wrapper)(audio_path) for audio_path in audio_paths)
 
 
 def process_audios(zoom_path: Path = Path(
