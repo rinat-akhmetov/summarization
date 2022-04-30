@@ -100,7 +100,7 @@ def format_time_for_subtitles(time: float) -> str:
     return f'{hours:02}:{minutes:02}:{seconds:02},{milliseconds:03}'
 
 
-def create_subtitles_file(file_path: str, grouped_items: [Item]):
+def create_subtitles_file(file_path: Path, grouped_items: [Item]):
     with open(file_path, 'w') as f:
         for index, item in enumerate(tqdm(grouped_items)):
             f.write(f'{index}\n')

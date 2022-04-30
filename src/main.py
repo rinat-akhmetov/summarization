@@ -5,8 +5,8 @@ from pathlib import Path
 from fire import Fire
 from joblib import Parallel, delayed
 
-from audio.amazon.transcriber import Transcriber
 from audio.amazon.subtitles import create_subtitle, create_subtitles_file
+from audio.amazon.transcriber import Transcriber
 from audio.utils import get_list_of_audio
 from text.main import prepare_tldr, generate_promts_from_transcription, merge_responses, beautify_lines
 from text.openai import request_open_ai_meeting_notes
@@ -38,7 +38,6 @@ def generate_transcriptions(transcription_folder_path: Path = None):
     create_subtitles_file(subtitles_file_path, flatten_labels)
 
 
-
 def generate_transcription(transcription_path: Path = None):
     with open(transcription_path, 'r') as f:
         response = json.load(f)
@@ -50,7 +49,8 @@ def generate_transcription(transcription_path: Path = None):
 def transcribe_wrapper(audio_path: str):
     return Transcriber(audio_path).transcribe()
 
-def create_trascription(audio_paths: list[str]):
+
+def create_transcription(audio_paths: list[str]):
     print('Processing audio files')
     Parallel(n_jobs=2)(delayed(transcribe_wrapper)(audio_path) for audio_path in audio_paths)
 
@@ -59,7 +59,7 @@ def process_audios(zoom_path: Path = Path(
     '/Users/arrtz3/Documents/Zoom/2022-04-29 12.04.35 Google Calendar Meeting (not synced)')):
     audio_paths = get_list_of_audio(zoom_path)
     s3_paths = Parallel(n_jobs=5)(delayed(upload_file_to_s3)(audio_path) for audio_path in audio_paths)
-    create_trascription(s3_paths)
+    create_transcription(s3_paths)
 
 
 if __name__ == '__main__':
