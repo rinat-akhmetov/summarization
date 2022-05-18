@@ -1,13 +1,10 @@
 from random import choice
 
-import nltk
 from joblib import Parallel, delayed
 from nltk.tokenize import sent_tokenize
 from tqdm import tqdm
 
 from text.openai import BEST_OF, MAX_TOKENS, openai_tldr, LIMIT
-
-nltk.download('punkt')
 
 key_phrase = 'At the meeting,'
 possible_replacement = ['And also,', "Besides,", "In Addition", "Furthermore"]
