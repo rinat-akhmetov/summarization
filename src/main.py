@@ -8,8 +8,9 @@ from joblib import Parallel, delayed
 from audio.amazon.subtitles import create_subtitle, create_subtitles_file
 from audio.amazon.transcriber import Transcriber
 from audio.utils import get_list_of_audio
-from text.main import prepare_tldr, generate_promts_from_transcription, merge_responses, beautify_lines
-from text.openai import request_open_ai_meeting_notes
+from text.main import prepare_tldr, generate_promts_from_transcription, merge_responses, beautify_lines, \
+    key_points_extraction
+from text.openai import request_open_ai_meeting_notes, key_points
 from utils.utils import upload_file_to_s3
 
 
@@ -62,9 +63,22 @@ def process_audios(zoom_path: Path = Path(
     create_transcription(s3_paths)
 
 
+def write_key_points(conversation_path):
+    conversation_path = Path(conversation_path)
+    for file_name in conversation_path.glob('*.txt'):
+        with open(file_name, 'r') as f:
+            input_text = f.read()
+        response = key_points(input_text)
+        file_name = str(file_name)
+        with open(file_name.replace('.txt', '_key_points.txt'), 'w') as f:
+            open_ai_text = key_points_extraction(response)
+            f.write(open_ai_text)
+
+
 if __name__ == '__main__':
     Fire({
         'process_audios': process_audios,
         'process_transcript': process_transcript,
+        'key_points': write_key_points,
         'generate_transcriptions': generate_transcriptions
     })

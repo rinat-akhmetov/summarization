@@ -5,7 +5,7 @@ from typing import List
 from fire import Fire
 from tqdm import tqdm
 
-from audio.amazon.transcriber import transcribe
+from audio.amazon.transcriber import AWSTranscriber
 
 
 class Alternative:
@@ -139,7 +139,8 @@ def main(file_path: str):
     # file_path = 'woman_speakers.json'
     # file_path = 's3://lokoai-lambdas-demo/AshleyMcArthur.mp4'
     if file_path.startswith('s3://'):
-        response = transcribe(file_path)
+        transcriber = AWSTranscriber(file_path)
+        response = transcriber.transcribe()
     else:
         with open(file_path, 'r') as f:
             response = json.load(f)

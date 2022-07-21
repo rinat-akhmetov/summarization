@@ -20,7 +20,7 @@ def request_open_ai_meeting_notes(promts) -> list:
 
 @cache
 def open_ai_meeting_notes(promt: str, temperature=0.1, frequency_penalty=0.01, presence_penalty=0.1) -> None:
-    promt = "Convert my short hand into a first-hand account of the meeting:\n\n" + promt
+    promt = "Convert workshop meeting into a first-hand account of the meeting:\n\n" + promt
     response = openai.Completion.create(
         engine="text-davinci-002",
         prompt=promt,
@@ -44,5 +44,22 @@ def openai_tldr(promt: str) -> OpenAIObject:
         top_p=1,
         frequency_penalty=0,
         presence_penalty=0
+    )
+    return response
+
+
+@cache
+def key_points(promt: str, temperature=0.7, frequency_penalty=0, presence_penalty=0) -> OpenAIObject:
+    promt = "It is the part of the conversation zoom conversation:\n\n" + promt
+    promt += '\n\nWhat are the key points of the conversation?'
+    response = openai.Completion.create(
+        engine="text-davinci-002",
+        prompt=promt,
+        temperature=temperature,
+        max_tokens=MAX_TOKENS,
+        best_of=BEST_OF,
+        top_p=1,
+        frequency_penalty=frequency_penalty,
+        presence_penalty=presence_penalty
     )
     return response

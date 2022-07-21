@@ -91,3 +91,17 @@ def generate_promts_from_transcription(transcript_path):
             else:
                 promts.append(line)
     return promts
+
+
+def key_points_extraction(response) -> str:
+    text = response.choices[0].text
+    kp = 'What are the key points of the conversation?'
+    if kp in text:
+        index = text.index(key_phrase)
+        text = text[index:]
+    else:
+        text = text
+        print(response.choices[0].finish_reason)
+        print(response)
+        # assert False, 'key phrase not found'
+    return text
