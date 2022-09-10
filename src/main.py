@@ -8,9 +8,9 @@ from joblib import Parallel, delayed
 from audio.amazon.subtitles import create_subtitle, create_subtitles_file
 from audio.amazon.transcriber import Transcriber
 from audio.utils import get_list_of_audio
-from text.main import prepare_tldr, generate_promts_from_transcription, merge_responses, beautify_lines, \
-    key_points_extraction
-from text.openai import request_open_ai_meeting_notes, key_points
+from text.export_processors import TextExportProcessor
+from text.summarizers.openai_adapter import OpenAIProcessor, PromtProcessor
+from text.zoom.processor import ZoomTranscriptionProcessor
 from utils.utils import upload_file_to_s3
 
 
@@ -18,14 +18,23 @@ def process_transcript(transcript_path: str = "./artifacts/GMT20220414-171026_Re
     """
     Processes a transcript.
     """
-    promts = generate_promts_from_transcription(transcript_path)
-
-    responses = request_open_ai_meeting_notes(promts)
-    result_string = merge_responses(responses)
-    beautified_result_string = beautify_lines(result_string)
-    with open(transcript_path + '_result.txt', 'w') as result_file:
-        result_file.write(beautified_result_string)
-    prepare_tldr(beautified_result_string)
+    best_of = 2
+    max_tokens = 400
+    limit = 4001
+    promt_processor = PromtProcessor(best_of, max_tokens, limit)
+    openai_processor = OpenAIProcessor()
+    txt_processor = TextExportProcessor()
+    pipeline = [
+        ZoomTranscriptionProcessor(),
+        promt_processor, openai_processor,
+        promt_processor,
+        openai_processor,
+        txt_processor
+    ]
+    args = transcript_path
+    for step in pipeline:
+        args = step(args)
+    print(args)
 
 
 def generate_transcriptions(transcription_folder_path: Path = None):
@@ -63,22 +72,9 @@ def process_audios(zoom_path: Path = Path(
     create_transcription(s3_paths)
 
 
-def write_key_points(conversation_path):
-    conversation_path = Path(conversation_path)
-    for file_name in conversation_path.glob('*.txt'):
-        with open(file_name, 'r') as f:
-            input_text = f.read()
-        response = key_points(input_text)
-        file_name = str(file_name)
-        with open(file_name.replace('.txt', '_key_points.txt'), 'w') as f:
-            open_ai_text = key_points_extraction(response)
-            f.write(open_ai_text)
-
-
 if __name__ == '__main__':
     Fire({
         'process_audios': process_audios,
         'process_transcript': process_transcript,
-        'key_points': write_key_points,
         'generate_transcriptions': generate_transcriptions
     })

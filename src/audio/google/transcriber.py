@@ -17,11 +17,6 @@ from fire import Fire
 from google.cloud import speech
 from google.cloud import storage
 
-# from audio.transcriber import Transcriber
-
-os.environ['AWS_PROFILE'] = 'EDU'
-os.environ['AWS_REGION'] = 'us-east-1'
-os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
 
 class Transcriber:
     def __init__(self, file_path: str):
@@ -29,11 +24,12 @@ class Transcriber:
         :param file_path: Path to the file to transcribe s3 or gcp.
         """
         assert file_path is not None
-        assert file_path.startswith('s3://') or file_path.startswith('gs://')
+        # assert file_path.startswith('s3://') or file_path.startswith('gs://')
         self.file_path: str = file_path
 
     def transcribe(self):
         raise NotImplementedError
+
 
 def upload_blob(source_file_name):
     """Uploads a file to the bucket."""
@@ -57,6 +53,8 @@ def upload_blob(source_file_name):
             source_file_name, destination_blob_name
         )
     )
+    return f'gs://{bucket_name}/{destination_blob_name}'
+
 
 def upload(file_path: Path):
     storage_client = storage.Client()
@@ -71,18 +69,20 @@ def upload(file_path: Path):
 
 
 class GoogleTranscriber(Transcriber):
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str, language: str = 'en-US'):
         """
         :param file_path: Path to the file to transcribe s3 or gcp.
         """
         super().__init__(file_path)
-        assert self.file_path.startswith('gs://'), 'File path must start with gs://'
+        if not self.file_path.startswith('gs://'):
+            self.file_path = upload_blob(self.file_path)
+            print('new file path is ', self.file_path)
         self.project_name = Path(self.file_path).name
-        self.language = 'en-US'
-        self.language = 'ru-RU'
+        self.language = language
         self.job_name = f'{self.project_name}-{self.language}'
         self.client = speech.SpeechClient()
         self.artifacts_path = 'artifacts/transcriptions/google'
+        self.model = 'video'
         if not os.path.exists(self.artifacts_path):
             os.makedirs(self.artifacts_path)
 
@@ -94,10 +94,19 @@ class GoogleTranscriber(Transcriber):
         client = speech.SpeechClient()
 
         audio = speech.RecognitionAudio(uri=self.file_path)
+        diarization_config = speech.SpeakerDiarizationConfig(
+            enable_speaker_diarization=True,
+            min_speaker_count=2,
+            max_speaker_count=6,
+        )
+        print('language is ', self.language)
         config = speech.RecognitionConfig(
             encoding=speech.RecognitionConfig.AudioEncoding.FLAC,
             sample_rate_hertz=32000,
             language_code=self.language,
+            diarization_config=diarization_config,
+            alternative_language_codes=['ru-RU']
+            # model='video'
         )
 
         operation = client.long_running_recognize(config=config, audio=audio)
@@ -106,12 +115,30 @@ class GoogleTranscriber(Transcriber):
         timeout = 60 * 60
         response = operation.result(timeout=timeout)
 
-        # Each result is for a consecutive portion of the audio. Iterate through
-        # them to get the transcripts for the entire audio file.
-        for result in response.results:
-            # The first alternative is the most likely one for this portion.
-            print(u"Transcript: {}".format(result.alternatives[0].transcript))
-            print(u"Confidence: {}".format(result.alternatives[0].confidence))
+        # The transcript within each result is separate and sequential per result.
+        # However, the words list within an alternative includes all the words
+        # from all the results thus far. Thus, to get all the words with speaker
+        # tags, you only have to take the words list from the last result:
+        result = response.results[-1]
+
+        words_info = result.alternatives[0].words
+
+        # Printing out the output:
+        speakers_speach = []
+        for word_info in words_info:
+            if len(speakers_speach) == 0 or speakers_speach[-1][1] != word_info.speaker_tag:
+                speakers_speach.append([word_info.word, word_info.speaker_tag])
+            else:
+                speakers_speach[-1][0] += ' ' + word_info.word
+            print(u"word: '{}', speaker_tag: {}".format(
+                word_info.word, word_info.speaker_tag))
+        file_name = f'{self.artifacts_path}/{self.project_name}.txt'
+        with open(file_name, 'w') as f:
+            for speach in speakers_speach:
+                f.write(f'{speach[1]}: {speach[0]}\n')
+        return file_name
+
+
 
 
 if __name__ == '__main__':
