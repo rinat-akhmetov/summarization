@@ -1,3 +1,6 @@
+import nltk
+
+nltk.download('punkt')
 import os
 from pathlib import Path
 
