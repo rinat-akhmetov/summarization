@@ -20,7 +20,7 @@ class OpenAIProcessor(BaseProcessor):
                 temperature=0.0,
                 frequency_penalty=1,
                 presence_penalty=1,
-                key_phrase="Describe the key points of the discussion from the transcription of the meeting:\n",
+                key_phrase="\n tl;dr:",
                 best_of=1,
                 max_tokens=400
             )
@@ -58,7 +58,7 @@ def request_open_ai(promts, config: Config, n_jobs=10) -> list:
 
 @cache
 def openai_request(promt: str, config: Config) -> None:
-    promt = config.key_phrase + promt
+    promt = promt + config.key_phrase
     response = openai.Completion.create(
         engine=config.engine,
         prompt=promt,
@@ -67,7 +67,7 @@ def openai_request(promt: str, config: Config) -> None:
         best_of=config.best_of,
         top_p=1,
         frequency_penalty=config.frequency_penalty,
-        presence_penalty=config.presence_penalty
+        presence_penalty=config.presence_penalty,
     )
     return response
 
